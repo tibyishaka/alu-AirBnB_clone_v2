@@ -7,13 +7,12 @@ from fabric.api import local
 from fabric.api import put
 from fabric.api import run
 
-
-
 env.hosts = ['44.201.238.52', '54.157.252.190']
 env.user = "ubuntu"
 env.key = "~/.ssh/school"
 def do_pack():
     """ creates gzipped archive of the directory web_static """
+    
     dt = datetime.utcnow()
     file = "versions/web_static_{}{}{}{}{}{}.tgz".format(dt.year,
                                                          dt.month,
