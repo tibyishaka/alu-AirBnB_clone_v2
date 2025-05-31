@@ -1,79 +1,92 @@
 #!/usr/bin/python3
-# creates and distributes an archive to a web server.
-import os.path
+"""Deploy web static module
+"""
+from fabric.api import local, put, run, env
 from datetime import datetime
-from fabric.api import env
-from fabric.api import local
-from fabric.api import put
-from fabric.api import run
+from os.path import isfile
 
-
-env.hosts = ['44.201.238.52', '54.157.252.190']
-env.user = "ubuntu"
-env.key = "~/.ssh/school"
+env.hosts = ["44.201.238.52", "54.157.252.190"]
 
 
 def do_pack():
-    """ creates gzipped archive of the directory web_static """ 
-    dt = datetime.utcnow()
-    file = "versions/web_static_{}{}{}{}{}{}.tgz".format(dt.year,
-                                                         dt.month,
-                                                         dt.day,
-                                                         dt.hour,
-                                                         dt.minute,
-                                                         dt.second)
-    if os.path.isdir("versions") is False:
-        if local("mkdir -p versions").failed is True:
-            return None
-    if local("tar -cvzf {} web_static".format(file)).failed is True:
+    """
+    Generate a .tgz archive from the contents of the web_static folder
+    of AirBnB Clone v2.
+    """
+    # Create versions folder (if not exits)-> -p
+    local("mkdir -p versions")
+    # Create web_static file with date and extension .tgz
+    now = datetime.now()
+    name = "versions/web_static_{}".format(now.strftime("%Y%m%d%H%M%S"))
+    name += ".tgz"
+    # Create tgz
+    compressCommand = "tar -cvzf {} web_static".format(name)
+    # Return de path if the file was created
+    if local(compressCommand) == 1:
         return None
-    return file
+    return name
 
 
 def do_deploy(archive_path):
+    """Deploy web_static to your web servers
+    Args:
+    archive_path: path of web_static.tgz
     """
-        Function to distribute archive to a web server
-        Args:
-        archive_path (str): path to the archive to be distributed
-        Return:
-        False - if the file at the path archive_path doesn't exist
-        True - otherwise
-    """
-    if os.path.isfile(archive_path) is False:
+    # if the path doesn't exists
+    if isfile(archive_path) is False:
         return False
-    file = archive_path.split("/")[-1]
-    name = file.split(".")[0]
+    try:
+        compressFile = archive_path.split("/")[1]
+        name = archive_path.split("/")[1].split(".")[0]
+        # upload the archive_path in /tmp/
+        put(archive_path, "/tmp/{}".format(compressFile))
 
-    if put(archive_path, "/tmp/{}".format(file)).failed is True:
-        return False
-    if run("rm -rf /data/web_static/releases/{}/".
-           format(name)).failed is True:
-        return False
-    if run("mkdir -p /data/web_static/releases/{}/".
-           format(name)).failed is True:
-        return False
-    if run("tar -xzf /tmp/{} -C /data/web_static/releases/{}/".
-           format(file, name)).failed is True:
-        return False
-    if run("rm /tmp/{}".format(file)).failed is True:
-        return False
-    if run("mv /data/web_static/releases/{}/web_static/* "
-           "/data/web_static/releases/{}/".format(name, name)).failed is True:
-        return False
-    if run("rm -rf /data/web_static/releases/{}/web_static".
-           format(name)).failed is True:
-        return False
-    if run("rm -rf /data/web_static/current").failed is True:
-        return False
-    if run("ln -s /data/web_static/releases/{}/ /data/web_static/current".
-           format(name)).failed is True:
-        return False
-    return True
+        # Path of releases
+        path = "/data/web_static/releases/{}/".format(name)
+        # create the directory where are going to be uncompress
+        command = "mkdir -p " + path
+        run(command)
+
+        # uncompress the file into /data/web_static/releases/
+        command = "tar -xzf /tmp/{} -C ".format(compressFile)
+        command += path
+        run(command)
+
+        # delete file from server
+        command = "rm /tmp/{}".format(compressFile)
+        run(command)
+
+        # move all the files into the dir releases/web_static<number>
+        command = "mv /data/web_static/releases/{}".format(name)
+        command += "/web_static/* "
+        command += path
+        run(command)
+
+        # delete the folder that create the uncompres process
+        command = "rm -rf /data/web_static/releases/{}".format(name)
+        command += "/web_static"
+        run(command)
+
+        # delete the symbolic link
+        command = "rm -rf /data/web_static/current"
+        run(command)
+
+        # create symbolic link
+        command = "ln -s /data/web_static/releases/{}/ ".format(name)
+        command += "/data/web_static/current"
+        run(command)
+    except Exception:
+        return False  # Fail
+    return True  # Correct
 
 
 def deploy():
-    """ creates and redistribute an archive to web server """
-    file = do_pack()
-    if file is None:
+    """Compress web static and distributes to the web servers
+    """
+    # compress web static in file with extension .tgz
+    archive_path = do_pack()
+
+    if archive_path is None:  # verification
         return False
-    return do_deploy(file)
+
+    return do_deploy(archive_path)
