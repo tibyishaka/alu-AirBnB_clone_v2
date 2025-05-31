@@ -1,18 +1,42 @@
 #!/usr/bin/env bash
-# Script that sets up your web servers for the deployment of web_static
-
-
-sudo apt-get -y update
+# Install Nginx
+sudo apt-get update
 sudo apt-get -y install nginx
-sudo service nginx start
-
-sudo mkdir -p /data/web_static/shared/
-sudo mkdir -p /data/web_static/releases/test/
-echo "Holberton School" | sudo tee /data/web_static/releases/test/index.html > /dev/null
-sudo ln -sf /data/web_static/releases/test/ /data/web_static/current
-
-sudo chown -R ubuntu:ubuntu /data/
-
-sudo sed -i '44i \\n\tlocation /hbnb_static {\n\t\talias /data/web_static/current/;\n\t}' /etc/nginx/sites-available/default
-
-sudo service nginx restart
+sudo ufw allow http
+# flag -p -> (if file exists)
+mkdir -p /data/web_static/releases/test/
+mkdir -p /data/web_static/shared/
+# create the standar index
+printf %s "<html>
+  <head>
+  </head>
+  <body>
+    Holberton School
+  </body>
+</html>
+" > /data/web_static/releases/test/index.html
+# create the simbolyc link
+ln -sf /data/web_static/releases/test/ /data/web_static/current
+# ownership of the /data/ folder to the ubuntu user AND group
+# Changes permission groups and Owner to /data
+sudo chown -R ubuntu /data/
+sudo chgrp -R ubuntu /data/
+# change configuration for default in nginx add->alias
+printf %s "server {
+    listen 80;
+    listen [::]:80 default_server;
+    root   /var/www/html;
+    index index.html index.htm index.nginx-debian.html;
+    location /redirect_me {
+        return 301 https://www.holbertonschool.com/co;
+    }
+    error_page 404 /404.html;
+    location = /404.html {
+        internal;
+    }
+    add_header X-Served-By $HOSTNAME;
+    location /hbnb_static {
+        alias /data/web_static/current;
+    }
+}" > /etc/nginx/sites-available/default
+sudo /etc/init.d/nginx restart
