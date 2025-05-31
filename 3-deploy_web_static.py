@@ -14,7 +14,7 @@ env.key = "~/.ssh/school"
 
 
 def do_pack():
-    """ creates gzipped archive of the directory web_static """    
+    """ creates gzipped archive of the directory web_static """ 
     dt = datetime.utcnow()
     file = "versions/web_static_{}{}{}{}{}{}.tgz".format(dt.year,
                                                          dt.month,
