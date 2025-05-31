@@ -1,33 +1,80 @@
 #!/usr/bin/python3
-"""Fabric script that distributes an archive to your web servers"""
-from fabric.api import env, put, run
-from os.path import exists
+"""Deploy static module
+"""
+from fabric.api import local, put, run, env
+from datetime import datetime
+from os.path import isfile
 
 env.hosts = ["44.201.238.52", "54.157.252.190"]
-env.user = "ubuntu"
-env.key = "~/.ssh/id_rsa"
+
+
+def do_pack():
+    """
+    Generate a .tgz archive from the contents of the web_static folder
+    of AirBnB Clone v2.
+    """
+    # Create versions folder (if not exits)-> -p
+    local("mkdir -p versions")
+    # Create web_static file with date and extension .tgz
+    now = datetime.now()
+    name = "versions/web_static_{}".format(now.strftime("%Y%m%d%H%M%S"))
+    name += ".tgz"
+    # Create tgz
+    compressCommand = "tar -cvzf {} web_static".format(name)
+    # Return de path if the file was created
+    if local(compressCommand) == 1:
+        return None
+    return name
 
 
 def do_deploy(archive_path):
-    """Function to distribute an archive to your web servers"""
-    if not exists(archive_path):
+    """Deploy web_static to your web servers
+    Args:
+    archive_path: path of web_static.tgz
+    """
+    # if the path doesn't exists
+    if isfile(archive_path) is False:
         return False
     try:
-        file_name = archive_path.split("/")[-1]
-        name = file_name.split(".")[0]
-        path_name = "/data/web_static/releases/" + name
-        put(archive_path, "/tmp/")
-        run("mkdir -p {}/".format(path_name))
-        run('tar -xzf /tmp/{} -C {}/'.format(file_name, path_name))
-        run("rm /tmp/{}".format(file_name))
-        run("mv {}/web_static/* {}".format(path_name, path_name))
-        run("rm -rf {}/web_static".format(path_name))
-        run('rm -rf /data/web_static/current')
-        run('ln -s {}/ /data/web_static/current'.format(path_name))
-        return True
-    except Exception:
-        return False
+        compressFile = archive_path.split("/")[1]
+        name = archive_path.split("/")[1].split(".")[0]
+        # upload the archive_path in /tmp/
+        put(archive_path, "/tmp/{}".format(compressFile))
 
-# Run the script like this:
-# $ fab -f 2-do_deploy_web_static.py
-# do_deploy:archive_path=versions/file_name.tgz
+        # Path of releases
+        path = "/data/web_static/releases/{}/".format(name)
+        # create the directory where are going to be uncompress
+        command = "mkdir -p " + path
+        run(command)
+
+        # uncompress the file into /data/web_static/releases/
+        command = "tar -xzf /tmp/{} -C ".format(compressFile)
+        command += path
+        run(command)
+
+        # delete file from server
+        command = "rm /tmp/{}".format(compressFile)
+        run(command)
+
+        # move all the files into the dir releases/web_static<number>
+        command = "mv /data/web_static/releases/{}".format(name)
+        command += "/web_static/* "
+        command += path
+        run(command)
+
+        # delete the folder that create the uncompres process
+        command = "rm -rf /data/web_static/releases/{}".format(name)
+        command += "/web_static"
+        run(command)
+
+        # delete the symbolic link
+        command = "rm -rf /data/web_static/current"
+        run(command)
+
+        # create symbolic link
+        command = "ln -s /data/web_static/releases/{}/ ".format(name)
+        command += "/data/web_static/current"
+        run(command)
+    except Exception:
+        return False  # Fail
+    return True  # Correct
