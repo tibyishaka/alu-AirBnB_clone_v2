@@ -11,6 +11,8 @@ from fabric.api import run
 env.hosts = ['44.201.238.52', '54.157.252.190']
 env.user = "ubuntu"
 env.key = "~/.ssh/school"
+
+
 def do_pack():
     """ creates gzipped archive of the directory web_static """    
     dt = datetime.utcnow()
