@@ -1,9 +1,9 @@
 #!/usr/bin/python3
 
 """Script that starts a Flask web application"""
-from flask import Flask
+from flask import Flask, render_template
 
-app = Flask(__name__)
+app = Flask(_name_)
 
 
 @app.route('/', strict_slashes=False)
@@ -18,19 +18,24 @@ def hbnb():
     return "HBNB"
 
 
-@app.route('/c/<text>')
-def text_var(text):
+@app.route('/c/<text>', strict_slashes=False)
+def text_route(text):
     """Comment"""
-    no_underscore = text.replace('_', ' ')
-    return "C {}".format(no_underscore)
+    return "C {}".format(text.replace("_", " "))
+
 
 @app.route('/python', strict_slashes=False)
 @app.route('/python/<text>', strict_slashes=False)
 def text_route_python(text="is cool"):
     """Comment"""
-    no_underscore = text.replace('_', ' ')
-    return "Python {}".format(no_underscore)
+    return "Python {}".format(text.replace("_", " "))
 
 
-if __name__ == '__main__':
+@app.route('/number/<int:n>', strict_slashes=False)
+def num_route(n):
+    """Comment"""
+    return "{} is a number".format(n)
+
+
+if _name_ == '_main_':
     app.run(host='0.0.0.0', port=5000)
